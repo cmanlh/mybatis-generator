@@ -1,17 +1,17 @@
-/*
- *  Copyright 2006 The Apache Software Foundation
+/**
+ *    Copyright 2006-2016 the original author or authors.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
  */
 package org.mybatis.generator.api.dom.java;
 
@@ -41,6 +41,9 @@ public class Method extends JavaElement {
     /** The name. */
     private String name;
 
+    /** The type parameters. */
+    private List<TypeParameter> typeParameters;
+
     /** The parameters. */
     private List<Parameter> parameters;
 
@@ -52,6 +55,8 @@ public class Method extends JavaElement {
     
     /** The is native. */
     private boolean isNative;
+    
+    private boolean isDefault;
 
     /**
      * Instantiates a new method.
@@ -70,6 +75,7 @@ public class Method extends JavaElement {
     public Method(String name) {
         super();
         bodyLines = new ArrayList<String>();
+        typeParameters = new ArrayList<TypeParameter>();
         parameters = new ArrayList<Parameter>();
         exceptions = new ArrayList<FullyQualifiedJavaType>();
         this.name = name;
@@ -84,12 +90,14 @@ public class Method extends JavaElement {
     public Method(Method original) {
         super(original);
         bodyLines = new ArrayList<String>();
+        typeParameters = new ArrayList<TypeParameter>();
         parameters = new ArrayList<Parameter>();
         exceptions = new ArrayList<FullyQualifiedJavaType>();
         this.bodyLines.addAll(original.bodyLines);
         this.constructor = original.constructor;
         this.exceptions.addAll(original.exceptions);
         this.name = original.name;
+        this.typeParameters.addAll(original.typeParameters);
         this.parameters.addAll(original.parameters);
         this.returnType = original.returnType;
         this.isNative = original.isNative;
@@ -156,9 +164,10 @@ public class Method extends JavaElement {
      *            the indent level
      * @param interfaceMethod
      *            the interface method
+     * @param compilationUnit the compilation unit
      * @return the formatted content
      */
-    public String getFormattedContent(int indentLevel, boolean interfaceMethod) {
+    public String getFormattedContent(int indentLevel, boolean interfaceMethod, CompilationUnit compilationUnit) {
         StringBuilder sb = new StringBuilder();
 
         addFormattedJavadoc(sb, indentLevel);
@@ -166,7 +175,13 @@ public class Method extends JavaElement {
 
         OutputUtilities.javaIndent(sb, indentLevel);
 
-        if (!interfaceMethod) {
+        if (interfaceMethod) {
+            if (isStatic()) {
+                sb.append("static "); //$NON-NLS-1$
+            } else if (isDefault()) {
+                sb.append("default "); //$NON-NLS-1$
+            }
+        } else {
             sb.append(getVisibility().getValue());
 
             if (isStatic()) {
@@ -188,11 +203,26 @@ public class Method extends JavaElement {
             }
         }
 
+        if (!getTypeParameters().isEmpty()) {
+            sb.append("<");
+            boolean comma = false;
+            for (TypeParameter typeParameter : getTypeParameters()) {
+                if (comma) {
+                    sb.append(", "); //$NON-NLS-1$
+                } else {
+                    comma = true;
+                }
+
+                sb.append(typeParameter.getFormattedContent(compilationUnit));
+            }
+            sb.append("> ");
+        }
+
         if (!constructor) {
             if (getReturnType() == null) {
                 sb.append("void"); //$NON-NLS-1$
             } else {
-                sb.append(getReturnType().getShortName());
+                sb.append(JavaDomUtils.calculateTypeName(compilationUnit, getReturnType()));
             }
             sb.append(' ');
         }
@@ -208,7 +238,7 @@ public class Method extends JavaElement {
                 comma = true;
             }
 
-            sb.append(parameter.getFormattedContent());
+            sb.append(parameter.getFormattedContent(compilationUnit));
         }
 
         sb.append(')');
@@ -223,7 +253,7 @@ public class Method extends JavaElement {
                     comma = true;
                 }
 
-                sb.append(fqjt.getShortName());
+                sb.append(JavaDomUtils.calculateTypeName(compilationUnit, fqjt));
             }
         }
 
@@ -310,6 +340,37 @@ public class Method extends JavaElement {
      */
     public void setName(String name) {
         this.name = name;
+    }
+
+    /**
+     * Gets the type parameters.
+     *
+     * @return the type parameters
+     */
+    public List<TypeParameter> getTypeParameters() {
+        return typeParameters;
+    }
+
+    /**
+     * Adds the type parameter.
+     *
+     * @param typeParameter
+     *            the type parameter
+     */
+    public void addTypeParameter(TypeParameter typeParameter) {
+        typeParameters.add(typeParameter);
+    }
+
+    /**
+     * Adds the parameter.
+     *
+     * @param index
+     *            the index
+     * @param typeParameter
+     *            the type parameter
+     */
+    public void addTypeParameter(int index, TypeParameter typeParameter) {
+        typeParameters.add(index, typeParameter);
     }
 
     /**
@@ -417,5 +478,13 @@ public class Method extends JavaElement {
      */
     public void setNative(boolean isNative) {
         this.isNative = isNative;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
+    }
+
+    public void setDefault(boolean isDefault) {
+        this.isDefault = isDefault;
     }
 }

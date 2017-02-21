@@ -1,17 +1,17 @@
-/*
- *  Copyright 2006 The Apache Software Foundation
+/**
+ *    Copyright 2006-2016 the original author or authors.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
  */
 package org.mybatis.generator.api.dom.java;
 
@@ -39,6 +39,9 @@ public class InnerClass extends JavaElement {
 
     /** The inner enums. */
     private List<InnerEnum> innerEnums;
+
+    /** The type parameters. */
+    private List<TypeParameter> typeParameters;
 
     /** The super class. */
     private FullyQualifiedJavaType superClass;
@@ -70,6 +73,7 @@ public class InnerClass extends JavaElement {
         fields = new ArrayList<Field>();
         innerClasses = new ArrayList<InnerClass>();
         innerEnums = new ArrayList<InnerEnum>();
+        this.typeParameters = new ArrayList<TypeParameter>();
         superInterfaceTypes = new HashSet<FullyQualifiedJavaType>();
         methods = new ArrayList<Method>();
         initializationBlocks = new ArrayList<InitializationBlock>();
@@ -172,6 +176,25 @@ public class InnerClass extends JavaElement {
     }
 
     /**
+     * Gets the type parameters.
+     *
+     * @return the type parameters
+     */
+    public List<TypeParameter> getTypeParameters() {
+        return this.typeParameters;
+    }
+
+    /**
+     * Adds the type parameter.
+     *
+     * @param typeParameter
+     *            the type parameter
+     */
+    public void addTypeParameter(TypeParameter typeParameter) {
+        this.typeParameters.add(typeParameter);
+    }
+
+    /**
      * Gets the initialization blocks.
      *
      * @return the initialization blocks
@@ -195,9 +218,10 @@ public class InnerClass extends JavaElement {
      *
      * @param indentLevel
      *            the indent level
+     * @param compilationUnit the compilation unit      
      * @return the formatted content
      */
-    public String getFormattedContent(int indentLevel) {
+    public String getFormattedContent(int indentLevel, CompilationUnit compilationUnit) {
         StringBuilder sb = new StringBuilder();
 
         addFormattedJavadoc(sb, indentLevel);
@@ -221,9 +245,22 @@ public class InnerClass extends JavaElement {
         sb.append("class "); //$NON-NLS-1$
         sb.append(getType().getShortName());
 
+        if(!this.getTypeParameters().isEmpty()) {
+            boolean comma = false;
+            sb.append("<");
+            for (TypeParameter typeParameter: typeParameters) {
+                if(comma) {
+                    sb.append(", ");
+                }
+                sb.append(typeParameter.getFormattedContent(compilationUnit));
+                comma = true;
+            }
+            sb.append("> ");
+        }
+
         if (superClass != null) {
             sb.append(" extends "); //$NON-NLS-1$
-            sb.append(superClass.getShortName());
+            sb.append(JavaDomUtils.calculateTypeName(compilationUnit, superClass));
         }
 
         if (superInterfaceTypes.size() > 0) {
@@ -237,7 +274,7 @@ public class InnerClass extends JavaElement {
                     comma = true;
                 }
 
-                sb.append(fqjt.getShortName());
+                sb.append(JavaDomUtils.calculateTypeName(compilationUnit, fqjt));
             }
         }
 
@@ -248,7 +285,7 @@ public class InnerClass extends JavaElement {
         while (fldIter.hasNext()) {
             OutputUtilities.newLine(sb);
             Field field = fldIter.next();
-            sb.append(field.getFormattedContent(indentLevel));
+            sb.append(field.getFormattedContent(indentLevel, compilationUnit));
             if (fldIter.hasNext()) {
                 OutputUtilities.newLine(sb);
             }
@@ -276,7 +313,7 @@ public class InnerClass extends JavaElement {
         while (mtdIter.hasNext()) {
             OutputUtilities.newLine(sb);
             Method method = mtdIter.next();
-            sb.append(method.getFormattedContent(indentLevel, false));
+            sb.append(method.getFormattedContent(indentLevel, false, compilationUnit));
             if (mtdIter.hasNext()) {
                 OutputUtilities.newLine(sb);
             }
@@ -289,7 +326,7 @@ public class InnerClass extends JavaElement {
         while (icIter.hasNext()) {
             OutputUtilities.newLine(sb);
             InnerClass innerClass = icIter.next();
-            sb.append(innerClass.getFormattedContent(indentLevel));
+            sb.append(innerClass.getFormattedContent(indentLevel, compilationUnit));
             if (icIter.hasNext()) {
                 OutputUtilities.newLine(sb);
             }
@@ -303,7 +340,7 @@ public class InnerClass extends JavaElement {
         while (ieIter.hasNext()) {
             OutputUtilities.newLine(sb);
             InnerEnum innerEnum = ieIter.next();
-            sb.append(innerEnum.getFormattedContent(indentLevel));
+            sb.append(innerEnum.getFormattedContent(indentLevel, compilationUnit));
             if (ieIter.hasNext()) {
                 OutputUtilities.newLine(sb);
             }
